@@ -1,0 +1,31 @@
+name: Product Catalog CI
+
+on:
+  push:
+    paths:
+      - "product-catalog-service/**"
+      - ".github/workflows/product-catalog-ci.yml"
+  pull_request:
+    paths:
+      - "product-catalog-service/**"
+      - ".github/workflows/product-catalog-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Verify application and integration tests
+        run: mvn --batch-mode --no-transfer-progress -f product-catalog-service/pom.xml verify
