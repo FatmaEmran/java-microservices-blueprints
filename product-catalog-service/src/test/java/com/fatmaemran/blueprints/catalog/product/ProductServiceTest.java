@@ -1,9 +1,10 @@
 package com.fatmaemran.blueprints.catalog.product;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import io.micrometer.observation.ObservationRegistry;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -24,8 +25,12 @@ class ProductServiceTest {
     @Mock
     private ProductRepository productRepository;
 
-    @InjectMocks
     private ProductService productService;
+
+    @BeforeEach
+    void setUp() {
+        productService = new ProductService(productRepository, ObservationRegistry.create());
+    }
 
     @Test
     void createNormalizesSkuAndTrimsOptionalText() {
