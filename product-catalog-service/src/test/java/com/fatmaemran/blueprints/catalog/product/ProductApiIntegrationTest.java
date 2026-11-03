@@ -2,13 +2,13 @@ package com.fatmaemran.blueprints.catalog.product;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
@@ -16,25 +16,18 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
 import java.math.BigDecimal;
 import java.net.URI;
-
+import java.time.temporal.ChronoUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Testcontainers(disabledWithoutDocker = true)
 @AutoConfigureTestRestTemplate
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ProductApiIntegrationTest {
-
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES =
-            new PostgreSQLContainer<>("postgres:17-alpine");
-
-    @Container
-    static final GenericContainer<?> REDIS =
-            new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
-                    .withExposedPorts(6379);
+    @Container static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine");
+    @Container static final GenericContainer<?> REDIS =
+            new GenericContainer<>(DockerImageName.parse("redis:7-alpine")).withExposedPorts(6379);
 
     @DynamicPropertySource
     static void configureDatabase(DynamicPropertyRegistry registry) {
@@ -44,70 +37,82 @@ class ProductApiIntegrationTest {
         registry.add("spring.data.redis.host", REDIS::getHost);
         registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
     }
-
-    @Autowired
-    private TestRestTemplate restTemplate;
-
-    @Autowired
-    private CacheManager cacheManager;
-
-    @LocalServerPort
-    private int port;
+    @Autowired private TestRestTemplate restTemplate;
+    @Autowired private CacheManager cacheManager;
+    @LocalServerPort private int port;
 
     @Test
-    void createsAndReadsAProductUsingPostgreSql() {
-        CreateProductRequest request = new CreateProductRequest(
-                "integration-keyboard",
-                "Integration Keyboard",
-                "Created through the HTTP API",
-                new BigDecimal("89.50")
-        );
-
-        ResponseEntity<ProductResponse> created = restTemplate.postForEntity(
-                "/api/v1/products",
-                request,
-                ProductResponse.class
-        );
-
+    void createsAndReadsAProductUsingPostgreSqlAndRedis() {
+        CreateProductRequest request = new CreateProductRequest("integration-keyboard", "Integration Keyboard",
+                "Created through the HTTP API", new BigDecimal("89.50"));
+        ResponseEntity<ProductResponse> created = restTemplate.postForEntity("/api/v1/products", request, ProductResponse.class);
         assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(created.getHeaders().getLocation()).isNotNull();
         assertThat(created.getBody()).isNotNull();
         assertThat(created.getBody().sku()).isEqualTo("INTEGRATION-KEYBOARD");
-
-        URI location = URI.create("http://localhost:" + port
-                + created.getHeaders().getLocation().getPath());
-
-        ResponseEntity<ProductResponse> fetched =
-                restTemplate.getForEntity(location, ProductResponse.class);
-
+        URI location = URI.create("http://localhost:" + port + created.getHeaders().getLocation().getPath());
+        ResponseEntity<ProductResponse> fetched = restTemplate.getForEntity(location, ProductResponse.class);
         assertThat(fetched.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(fetched.getBody()).isNotNull();
         assertThat(fetched.getBody().id()).isEqualTo(created.getBody().id());
         assertThat(fetched.getBody().price()).isEqualByComparingTo("89.50");
 
-        assertThat(cacheManager.getCache("product-by-id")).isNotNull();
-        assertThat(cacheManager.getCache("product-by-id")
-                .get(created.getBody().id(), ProductResponse.class))
-                .isEqualTo(created.getBody());
+        Cache cache = cacheManager.getCache("product-by-id");
+        assertThat(cache).isNotNull();
+        ProductResponse cached = cache.get(created.getBody().id(), ProductResponse.class);
+        assertThat(cached).isNotNull();
+        assertThat(cached.id()).isEqualTo(created.getBody().id());
+        assertThat(cached.sku()).isEqualTo(created.getBody().sku());
+        assertThat(cached.name()).isEqualTo(created.getBody().name());
+        assertThat(cached.price()).isEqualByComparingTo(created.getBody().price());
+        assertThat(cached.createdAt()).isEqualTo(created.getBody().createdAt().truncatedTo(ChronoUnit.MICROS));
+    }
+
+    @Test
+    void updateEvictsCachedProductAndNextReadReturnsFreshData() {
+        ProductResponse created = createProduct("cache-update-key", "Before update");
+        restTemplate.getForEntity("/api/v1/products/" + created.id(), ProductResponse.class);
+        Cache cache = cacheManager.getCache("product-by-id");
+        assertThat(cache.get(created.id())).isNotNull();
+        UpdateProductRequest update = new UpdateProductRequest("After update", "Updated through the API", new BigDecimal("25.00"));
+        ResponseEntity<ProductResponse> updated = restTemplate.exchange("/api/v1/products/" + created.id(),
+                HttpMethod.PUT, new HttpEntity<>(update), ProductResponse.class);
+        assertThat(updated.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(updated.getBody()).isNotNull();
+        assertThat(updated.getBody().name()).isEqualTo("After update");
+        assertThat(cache.get(created.id())).isNull();
+        ProductResponse fetched = restTemplate.getForObject("/api/v1/products/" + created.id(), ProductResponse.class);
+        assertThat(fetched).isNotNull();
+        assertThat(fetched.name()).isEqualTo("After update");
+        assertThat(fetched.price()).isEqualByComparingTo("25.00");
+    }
+
+    @Test
+    void deleteEvictsCachedProductAndSubsequentReadReturnsNotFound() {
+        ProductResponse created = createProduct("cache-delete-key", "Delete me");
+        restTemplate.getForEntity("/api/v1/products/" + created.id(), ProductResponse.class);
+        Cache cache = cacheManager.getCache("product-by-id");
+        assertThat(cache.get(created.id())).isNotNull();
+        ResponseEntity<Void> deleted = restTemplate.exchange("/api/v1/products/" + created.id(), HttpMethod.DELETE, null, Void.class);
+        assertThat(deleted.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(cache.get(created.id())).isNull();
+        ResponseEntity<String> missing = restTemplate.getForEntity("/api/v1/products/" + created.id(), String.class);
+        assertThat(missing.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
     void rejectsDuplicateSkuWithConflict() {
-        CreateProductRequest request = new CreateProductRequest(
-                "duplicate-key",
-                "First Product",
-                null,
-                new BigDecimal("10.00")
-        );
-
-        ResponseEntity<ProductResponse> first = restTemplate.postForEntity(
-                "/api/v1/products", request, ProductResponse.class
-        );
-        ResponseEntity<String> duplicate = restTemplate.postForEntity(
-                "/api/v1/products", request, String.class
-        );
-
+        CreateProductRequest request = new CreateProductRequest("duplicate-key", "First Product", null, new BigDecimal("10.00"));
+        ResponseEntity<ProductResponse> first = restTemplate.postForEntity("/api/v1/products", request, ProductResponse.class);
+        ResponseEntity<String> duplicate = restTemplate.postForEntity("/api/v1/products", request, String.class);
         assertThat(first.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(duplicate.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    }
+
+    private ProductResponse createProduct(String sku, String name) {
+        ResponseEntity<ProductResponse> response = restTemplate.postForEntity("/api/v1/products",
+                new CreateProductRequest(sku, name, null, new BigDecimal("12.00")), ProductResponse.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        return response.getBody();
     }
 }
