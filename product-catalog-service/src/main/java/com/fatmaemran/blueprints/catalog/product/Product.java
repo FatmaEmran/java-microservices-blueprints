@@ -2,6 +2,8 @@ package com.fatmaemran.blueprints.catalog.product;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
@@ -11,8 +13,6 @@ import jakarta.persistence.Version;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.UUID;
-
 @Entity
 @Table(
         name = "products",
@@ -21,6 +21,7 @@ import java.util.UUID;
 public class Product {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(nullable = false, length = 64)
@@ -50,7 +51,6 @@ public class Product {
     }
 
     private Product(String sku, String name, String description, BigDecimal price) {
-        this.id = UUID.randomUUID();
         this.sku = sku;
         this.name = name;
         this.description = description;
