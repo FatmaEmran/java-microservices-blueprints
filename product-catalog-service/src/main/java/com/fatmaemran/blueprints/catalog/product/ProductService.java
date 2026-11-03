@@ -1,5 +1,7 @@
 package com.fatmaemran.blueprints.catalog.product;
 
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -15,15 +17,30 @@ import java.util.UUID;
 public class ProductService {
     private static final int MAX_PAGE_SIZE = 100;
     private final ProductRepository productRepository;
-    public ProductService(ProductRepository productRepository) { this.productRepository = productRepository; }
+    private final ObservationRegistry observationRegistry;
+
+    public ProductService(ProductRepository productRepository, ObservationRegistry observationRegistry) {
+        this.productRepository = productRepository;
+        this.observationRegistry = observationRegistry;
+    }
 
     @Transactional
     public ProductResponse create(CreateProductRequest request) {
-        String sku = request.sku().trim().toUpperCase(Locale.ROOT);
-        if (productRepository.existsBySku(sku)) throw new DuplicateSkuException(sku);
-        Product product = Product.create(sku, request.name().trim(),
-                normalizeDescription(request.description()), request.price());
-        return ProductResponse.from(productRepository.save(product));
+        Observation observation = Observation.createNotStarted("catalog.product.create", observationRegistry)
+                .lowCardinalityKeyValue("operation", "create");
+        observation.start();
+        try {
+            String sku = request.sku().trim().toUpperCase(Locale.ROOT);
+            if (productRepository.existsBySku(sku)) throw new DuplicateSkuException(sku);
+            Product product = Product.create(sku, request.name().trim(),
+                    normalizeDescription(request.description()), request.price());
+            return ProductResponse.from(productRepository.save(product));
+        } catch (RuntimeException exception) {
+            observation.error(exception);
+            throw exception;
+        } finally {
+            observation.stop();
+        }
     }
 
     @Cacheable(cacheNames = "product-by-id", key = "#id")
