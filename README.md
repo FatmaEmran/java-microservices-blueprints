@@ -104,18 +104,17 @@ java-microservices-blueprints/
 | Capability | Status |
 | --- | --- |
 | Spring Boot 4.1.2 and Java 21 project setup | Implemented |
-| REST API, validation, pagination, and error responses | Implemented; CI verification pending |
-| PostgreSQL persistence and Flyway migration | Implemented; CI verified |
-
-| Unit and PostgreSQL/Redis Testcontainers integration tests | Implemented; latest Redis CI run pending |
-| Local PostgreSQL Compose environment | Implemented |
-| Redis cache-aside reads, JSON serialization, and five-minute TTL | Implemented; CI verification pending |
-| Redis fail-open read/write behavior | Implemented; CI verification pending |
+| REST API, validation, pagination, and error responses | Implemented; verified by CI |
+| PostgreSQL persistence and Flyway migration | Implemented; verified by CI |
+| Unit and PostgreSQL/Redis Testcontainers integration tests | Implemented; Redis CI verification in progress |
+| Local PostgreSQL and Redis Compose environment | Implemented |
+| Redis cache-aside reads, JSON serialization, and five-minute TTL | Implemented; Redis CI verification in progress |
+| Redis fail-open read/write behavior | Implemented; Redis CI verification in progress |
 | Cache invalidation for product updates/deletes | Pending update/delete endpoints |
 | Metrics and distributed tracing | Planned |
 | Application container image | Planned |
 | GraalVM Native Image measurements | Planned |
-| CI build and quality checks | Passing before Redis changes; Redis changes awaiting CI |
+| CI build and quality checks | Previously passing; Redis milestone verification in progress |
 
 ## Technical article roadmap
 
