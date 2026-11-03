@@ -31,4 +31,15 @@ jobs:
         run: mvn --batch-mode --no-transfer-progress -f product-catalog-service/pom.xml verify
 
       - name: Build application container image
-        run: docker build --tag product-catalog-service:ci --file product-catalog-service/Dockerfile product-catalog-service
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            if docker build --tag product-catalog-service:ci --file product-catalog-service/Dockerfile product-catalog-service; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            echo "Docker build failed (attempt $attempt); retrying in 15 seconds..."
+            sleep 15
+          done
