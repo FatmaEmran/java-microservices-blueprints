@@ -29,3 +29,6 @@ jobs:
 
       - name: Verify application and integration tests
         run: mvn --batch-mode --no-transfer-progress -f product-catalog-service/pom.xml verify
+
+      - name: Build application container image
+        run: docker build --tag product-catalog-service:ci --file product-catalog-service/Dockerfile product-catalog-service
