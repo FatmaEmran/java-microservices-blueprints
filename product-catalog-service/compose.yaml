@@ -1,4 +1,25 @@
 services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: product-catalog-service:local
+    container_name: product-catalog-service
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/catalog
+      DB_USERNAME: catalog
+      DB_PASSWORD: catalog
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
   postgres:
     image: postgres:17-alpine
     container_name: product-catalog-postgres
