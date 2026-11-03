@@ -4,6 +4,7 @@ import com.fatmaemran.blueprints.catalog.product.DuplicateSkuException;
 import com.fatmaemran.blueprints.catalog.product.InvalidPageRequestException;
 import com.fatmaemran.blueprints.catalog.product.ProductNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -30,6 +31,15 @@ public class ApiExceptionHandler {
                 exception instanceof DuplicateSkuException
                         ? exception.getMessage()
                         : "The request conflicts with an existing resource");
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    ProblemDetail handleOptimisticLock(OptimisticLockingFailureException exception) {
+        return problem(
+                HttpStatus.CONFLICT,
+                "Concurrent modification",
+                "The product was modified by another request; retrieve the latest version and retry"
+        );
     }
 
     @ExceptionHandler(InvalidPageRequestException.class)
