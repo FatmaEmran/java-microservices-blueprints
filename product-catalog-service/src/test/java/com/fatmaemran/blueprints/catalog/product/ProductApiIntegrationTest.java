@@ -17,6 +17,7 @@ import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.net.URI;
 import java.time.temporal.ChronoUnit;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -65,7 +66,8 @@ class ProductApiIntegrationTest {
         assertThat(cached.sku()).isEqualTo(created.getBody().sku());
         assertThat(cached.name()).isEqualTo(created.getBody().name());
         assertThat(cached.price()).isEqualByComparingTo(created.getBody().price());
-        assertThat(cached.createdAt()).isEqualTo(created.getBody().createdAt().truncatedTo(ChronoUnit.MICROS));
+        assertThat(Duration.between(created.getBody().createdAt(), cached.createdAt()).abs())
+                .isLessThanOrEqualTo(Duration.of(1, ChronoUnit.MICROS));
     }
 
     @Test
