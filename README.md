@@ -10,6 +10,7 @@ A small service built with **Java 21** and **Spring Boot 4.1.2**. It will demons
 
 - REST API design and request validation using Spring MVC
 - PostgreSQL persistence and versioned Flyway migrations
+- Redis cache-aside reads with a five-minute TTL, JSON serialization, and fail-open cache error handling
 - Redis-backed cache-aside reads and deliberate cache invalidation
 - Health checks and application metrics with Spring Boot Actuator
 - Unit and integration tests using JUnit, Mockito, and Testcontainers
@@ -50,7 +51,7 @@ A successful create returns `201 Created` and a `Location` header for the new re
 
 Requirements: JDK 21, Maven 3.9+, and Docker with Docker Compose.
 
-Start PostgreSQL:
+Start PostgreSQL and Redis:
 
 ```bash
 docker compose -f product-catalog-service/compose.yaml up -d
@@ -67,6 +68,8 @@ The service uses these local defaults, which can be overridden with environment 
 - `DB_URL=jdbc:postgresql://localhost:5432/catalog`
 - `DB_USERNAME=catalog`
 - `DB_PASSWORD=catalog`
+- `REDIS_HOST=localhost`
+- `REDIS_PORT=6379`
 
 Flyway applies database migrations at startup. Hibernate validates the resulting schema; it does not create or mutate tables.
 
@@ -102,14 +105,17 @@ java-microservices-blueprints/
 | --- | --- |
 | Spring Boot 4.1.2 and Java 21 project setup | Implemented |
 | REST API, validation, pagination, and error responses | Implemented; CI verification pending |
-| PostgreSQL persistence and Flyway migration | Implemented; CI verification pending |
-| Unit and Testcontainers integration tests | Implemented; CI verification pending |
+| PostgreSQL persistence and Flyway migration | Implemented; CI verified |
+
+| Unit and PostgreSQL/Redis Testcontainers integration tests | Implemented; latest Redis CI run pending |
 | Local PostgreSQL Compose environment | Implemented |
-| Redis caching and invalidation | Planned |
+| Redis cache-aside reads, JSON serialization, and five-minute TTL | Implemented; CI verification pending |
+| Redis fail-open read/write behavior | Implemented; CI verification pending |
+| Cache invalidation for product updates/deletes | Pending update/delete endpoints |
 | Metrics and distributed tracing | Planned |
 | Application container image | Planned |
 | GraalVM Native Image measurements | Planned |
-| CI build and quality checks | Workflow added; first run pending |
+| CI build and quality checks | Passing before Redis changes; Redis changes awaiting CI |
 
 ## Technical article roadmap
 
