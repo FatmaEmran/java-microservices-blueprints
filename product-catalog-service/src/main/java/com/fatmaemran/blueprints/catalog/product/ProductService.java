@@ -1,5 +1,6 @@
 package com.fatmaemran.blueprints.catalog.product;
 
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -41,6 +42,7 @@ public class ProductService {
         return ProductResponse.from(productRepository.save(product));
     }
 
+    @Cacheable(cacheNames = "product-by-id", key = "#id")
     public ProductResponse getById(UUID id) {
         return productRepository.findById(id)
                 .map(ProductResponse::from)
