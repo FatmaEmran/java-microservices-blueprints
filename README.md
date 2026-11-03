@@ -13,7 +13,9 @@ A service built with **Java 21** and **Spring Boot 4.1.2**. It demonstrates:
 - Redis cache-aside reads with a five-minute TTL and JSON serialization
 - Explicit cache eviction after product updates and deletes
 - A deliberate cache failure policy: read/write failures fall back to PostgreSQL; eviction failures are surfaced to avoid silently accepting potentially stale data
-- Health checks with Spring Boot Actuator
+- Health checks and Prometheus metrics with Spring Boot Actuator and Micrometer
+- OpenTelemetry traces exported over OTLP, with Prometheus and Jaeger in the local Compose stack
+- A bounded-cardinality business observation for product creation; no product IDs or SKUs are metric labels
 - Unit and integration tests using JUnit, Mockito, PostgreSQL/Redis Testcontainers
 - A non-root, multi-stage Docker image and Docker Compose orchestration
 
@@ -65,7 +67,19 @@ Or build and run the complete stack, including the application container:
 docker compose -f product-catalog-service/compose.yaml up --build -d
 ```
 
-The API is available at `http://localhost:8080`; health is exposed at `/actuator/health`.
+The API is available at `http://localhost:8080`; health is exposed at `/actuator/health` and Prometheus metrics at `/actuator/prometheus`.
+
+The complete Compose stack also starts Prometheus (`http://localhost:9090`) and Jaeger (`http://localhost:16686`). Prometheus scrapes the application every 15 seconds. Open the Jaeger UI, select `product-catalog-service`, and search for traces after sending API requests.
+
+To exercise the intentionally slow operation, start the service with the `dev` profile (the endpoint is not registered in the default profile):
+
+```bash
+docker compose -f product-catalog-service/compose.yaml up -d postgres redis jaeger
+SPRING_PROFILES_ACTIVE=dev mvn -f product-catalog-service/pom.xml spring-boot:run
+curl http://localhost:8080/internal/dev/slow
+```
+
+The demo waits 1.5 seconds and creates a named observation so its span can be located in Jaeger. Do not enable the `dev` profile in production. The local Compose application uses 100% trace sampling for demonstration; the application default is 10%, configurable through `TRACING_SAMPLING_PROBABILITY`.
 
 The service uses these local defaults, which can be overridden with environment variables:
 
@@ -116,8 +130,8 @@ java-microservices-blueprints/
 | Redis read/write fail-open behavior | Implemented; CI verified |
 | Update/delete cache invalidation | Implemented; integration tests passing |
 | PostgreSQL and Redis Testcontainers integration tests | Passing |
-| Local Compose stack and non-root Docker image | Implemented; image build CI pending |
-| Metrics and distributed tracing | Planned |
+| Local Compose stack, non-root Docker image, Prometheus, and Jaeger | Implemented; observability CI verification pending |
+| Prometheus metrics, product-creation observation, and OTLP tracing | Implemented; CI verification pending |
 | GraalVM Native Image measurements | Planned |
 | CI build and quality checks | Maven verification passing; Docker build check added |
 
