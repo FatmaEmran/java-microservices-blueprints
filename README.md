@@ -130,10 +130,14 @@ java-microservices-blueprints/
 | Redis read/write fail-open behavior | Implemented; CI verified |
 | Update/delete cache invalidation | Implemented; integration tests passing |
 | PostgreSQL and Redis Testcontainers integration tests | Passing |
-| Local Compose stack, non-root Docker image, Prometheus, and Jaeger | Implemented; observability CI verification pending |
-| Prometheus metrics, product-creation observation, and OTLP tracing | Implemented; CI verification pending |
+| Local Compose stack, non-root Docker image, Prometheus, and Jaeger | Implemented; end-to-end Compose smoke test passing |
+| Prometheus metrics, product-creation observation, and OTLP tracing | Implemented; Prometheus scrape and Jaeger trace ingestion verified in CI |
 | GraalVM Native Image measurements | Planned |
-| CI build and quality checks | Maven verification passing; Docker build check added |
+| CI build and quality checks | Maven tests, Docker image build, and observability Compose smoke test passing |
+
+## Production-readiness review
+
+The current blueprint is tested and runnable, but it is not presented as fully production-secure. See [the production-readiness review](docs/production-readiness-review.md) for verified controls and remaining deployment requirements, including authentication, management endpoint isolation, cache consistency, resilience, and operational controls.
 
 ## Technical article roadmap
 
