@@ -117,6 +117,21 @@ class ProductApiIntegrationTest {
         assertThat(response.getBody()).contains("jvm_memory_used_bytes");
     }
 
+
+    @Test
+    void recordsProductCreationObservationAsPrometheusMetric() {
+        createProduct("observed-create-key", "Observed Product");
+        ResponseEntity<String> response = restTemplate.getForEntity("/actuator/prometheus", String.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("catalog_product_create_seconds_count");
+    }
+
+    @Test
+    void developmentOnlySlowEndpointIsNotAvailableInDefaultProfile() {
+        ResponseEntity<String> response = restTemplate.getForEntity("/internal/dev/slow", String.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
     private ProductResponse createProduct(String sku, String name) {
         ResponseEntity<ProductResponse> response = restTemplate.postForEntity("/api/v1/products",
                 new CreateProductRequest(sku, name, null, new BigDecimal("12.00")), ProductResponse.class);
