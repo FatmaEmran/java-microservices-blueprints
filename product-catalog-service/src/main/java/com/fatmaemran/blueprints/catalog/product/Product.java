@@ -13,6 +13,7 @@ import jakarta.persistence.Version;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 @Entity
 @Table(
         name = "products",
