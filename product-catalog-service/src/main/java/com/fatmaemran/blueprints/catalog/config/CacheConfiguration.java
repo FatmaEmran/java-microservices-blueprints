@@ -27,7 +27,6 @@ public class CacheConfiguration implements CachingConfigurer {
     private static final Logger log = LoggerFactory.getLogger(CacheConfiguration.class);
 
     @Bean
-    @Override
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
         RedisCacheConfiguration productCache = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(5))
