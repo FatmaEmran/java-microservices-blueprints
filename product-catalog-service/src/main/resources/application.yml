@@ -15,12 +15,11 @@ spring:
           time_zone: UTC
   flyway:
     enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
 
 server:
   shutdown: graceful
-
-spring.lifecycle:
-  timeout-per-shutdown-phase: 20s
 
 management:
   endpoints:
