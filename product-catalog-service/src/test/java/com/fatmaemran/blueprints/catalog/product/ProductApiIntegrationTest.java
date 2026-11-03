@@ -109,6 +109,14 @@ class ProductApiIntegrationTest {
         assertThat(duplicate.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     }
 
+
+    @Test
+    void exposesPrometheusMetricsThroughActuator() {
+        ResponseEntity<String> response = restTemplate.getForEntity("/actuator/prometheus", String.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("jvm_memory_used_bytes");
+    }
+
     private ProductResponse createProduct(String sku, String name) {
         ResponseEntity<ProductResponse> response = restTemplate.postForEntity("/api/v1/products",
                 new CreateProductRequest(sku, name, null, new BigDecimal("12.00")), ProductResponse.class);
