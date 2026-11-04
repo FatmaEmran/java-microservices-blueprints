@@ -4,6 +4,10 @@ Production-minded Java and Spring Boot examples focused on the engineering detai
 
 This repository is built alongside practical technical articles. Each blueprint will be runnable, tested, documented, and explicit about trade-offs.
 
+## Technical writing samples
+
+See the [technical writing samples](docs/writing-samples/README.md) for three focused articles: a step-by-step REST API tutorial, Docker containerization documentation, and an observability architecture walkthrough.
+
 ## First blueprint: Product Catalog API
 
 A service built with **Java 21** and **Spring Boot 4.1.2**. It demonstrates:
